@@ -43,6 +43,9 @@ Windows: https://docs.blender.org/manual/en/dev/advanced/command_line/launch/win
 
 Then run the following command:
 `blender --command extension build --source-dir <directory path to this repo> --output-dir <directory path to this repo>/.dist`
+or for MacOS
+`Blender --command extension build --source-dir <directory path to this repo> --output-dir <directory path to this repo>/.dist`
+
 
 > [!NOTE]
 > If any issue occur reference the blender doc: https://docs.blender.org/manual/en/dev/advanced/extensions/python_wheels.html 
