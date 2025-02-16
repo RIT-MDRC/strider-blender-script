@@ -42,13 +42,12 @@ MacOS: https://docs.blender.org/manual/en/dev/advanced/command_line/launch/macos
 Windows: https://docs.blender.org/manual/en/dev/advanced/command_line/launch/windows.html
 
 Then run the following command:
-`blender --command extension build --source-dir <directory path to this repo> --output-dir <directory path to this repo>/.dist`
+`blender --command extension build --source-dir <directory path to this repo> --output-dir <directory path to this repo>/dist`
 or for MacOS
-`Blender --command extension build --source-dir <directory path to this repo> --output-dir <directory path to this repo>/.dist`
-
+`Blender --command extension build --source-dir <directory path to this repo> --output-dir <directory path to this repo>/dist`
 
 > [!NOTE]
 > If any issue occur reference the blender doc: https://docs.blender.org/manual/en/dev/advanced/extensions/python_wheels.html 
 
 Once this has been created you can then open blender to add the addon from this cloned repository.
-Go `Edit > preferences > add-ons` then top right hand corner has a `▽` in blender 4.3 or 4.2 may have install button. Click `install from disk`.
+Go `Edit > preferences > add-ons` then top right hand corner has a `▽` in blender 4.3 or 4.2 may have install button. Click `install from disk`. Pick the newly generated zip file. This may fail, but know that the library will be importable within the blender python environment, so don't worry. Eventually this will be fixed but if you want to just try out some stuff with a new library this is one way to do it. 
