@@ -68,5 +68,10 @@ paths_exclude_pattern = [
   "__pycache__/",
   "/.git/",
   "/*.zip",
-  "/build/"
+  "/.venv/",
+  "/.vscode/",
+  "/build/",
+  "pyproject.toml",
+  "README.md",
+  "uv.lock",
 ]
