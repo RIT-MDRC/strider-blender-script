@@ -9,4 +9,5 @@ dependencies = [
     "pip>=25.0.1",
     "bpy>=4.3.0",
     "numpy==1.26.4",
+    "fake-bpy-module-latest>=20250419",
 ]

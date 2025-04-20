@@ -1,9 +1,17 @@
 import asyncio
+import json
 import threading
 from dataclasses import dataclass
 
 import bpy
 import websockets
+
+from .angle_grabber import (
+    MODELS_TO_GRAB_ANGLES,
+    Bone,
+    set_model_namespace,
+)
+from .config import MODEL_CONFIGURATION
 
 
 @dataclass
@@ -27,15 +35,32 @@ bl_info = {
 
 class SendMessage(bpy.types.Operator):
     bl_idname = "object.send_message"  # Unique identifier for buttons and menu items to reference.
-    bl_label = "Send websocket message"  # Display name in the interface.
+    bl_label = "Send angle data"  # Display name in the interface.
     bl_options = {"REGISTER"}
+
+    message_interval: int = 0.01  # Interval in seconds to send messages.
+    server_url: str = WEBSOCKET_SERVER
+    loop: asyncio.AbstractEventLoop = None
+    thread: threading.Thread = None
+
+    MODELS_TO_GRAB_ANGLES: dict[str, Bone] = MODELS_TO_GRAB_ANGLES
+    invalid: bool = False
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.server_url = WEBSOCKET_SERVER
         self.loop = asyncio.new_event_loop()
         self.thread = threading.Thread(target=self._run_loop, daemon=True)
         self.thread.start()
+        self.invalid = set_model_namespace(MODEL_CONFIGURATION)
+        if self.invalid:
+            print("Invalid armature or bones.")
+            return
+        print("Armature and bones are valid.")
+        print("WebSocket server URL:", self.server_url)
+        print(
+            "Model configuration:",
+            {k: v.name for k, v in self.MODELS_TO_GRAB_ANGLES.items()},
+        )
 
     def _run_loop(self):
         asyncio.set_event_loop(self.loop)
@@ -56,8 +81,10 @@ class SendMessage(bpy.types.Operator):
     async def _send_message(self):
         assert WEBSOCKET.get(self.server_url) is not None
         try:
-            await WEBSOCKET.get(self.server_url).connection.send("hello")
-            print("Message 'hello' sent successfully.")
+            angles = {k: v.get_angle() for k, v in self.MODELS_TO_GRAB_ANGLES.items()}
+            data = json.dumps(angles)
+            await WEBSOCKET.get(self.server_url).connection.send(data)
+            print("Data sent: ", data)
         except Exception as e:
             print(f"Failed to send message: {e}")
 
@@ -74,6 +101,7 @@ class SendMessage(bpy.types.Operator):
                 print(f"Failed to close connection: {e}")
             finally:
                 WEBSOCKET[self.server_url] = None
+            self.loop.stop()
 
     async def _send_message_interval(self, interval):
         while True:
@@ -94,9 +122,9 @@ class SendMessage(bpy.types.Operator):
         if (task := ws.task) is None:
             # Start the interval task
             ws.task = asyncio.run_coroutine_threadsafe(
-                self._send_message_interval(2), self.loop
+                self._send_message_interval(self.message_interval), self.loop
             )
-            print("Started sending messages every 2 seconds.")
+            print(f"Started sending messages every {self.message_interval} seconds.")
         else:
             # Cancel the interval task
             task.cancel()
@@ -120,14 +148,14 @@ def menu_func(self, context):
 
 def register():
     bpy.utils.register_class(SendMessage)
-    bpy.types.VIEW3D_MT_object.append(
+    bpy.types.VIEW3D_MT_pose.append(
         menu_func
     )  # Adds the new operator to an existing menu.
 
 
 def unregister():
     bpy.utils.unregister_class(SendMessage)
-    bpy.types.VIEW3D_MT_object.remove(menu_func)
+    bpy.types.VIEW3D_MT_pose.remove(menu_func)
 
 
 # This allows you to run the script directly from Blender's Text editor

@@ -1,6 +1,7 @@
 {
   "recommendations": [
     "tamasfe.even-better-toml",
-    "charliermarsh.ruff"
+    "charliermarsh.ruff",
+    "JacquesLucke.blender-development"
   ]
 }

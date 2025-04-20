@@ -54,8 +54,8 @@ wheels = [
 # # Keep this a single short sentence without a period (.) at the end.
 # # For longer explanations use the documentation or detail page.
 #
-# [permissions]
-# network = "Need to sync motion-capture data to server"
+[permissions]
+network = "Need to receive and send data to/from the strider controller"
 # files = "Import/export FBX from/to disk"
 # clipboard = "Copy and paste bone transforms"
 
@@ -74,4 +74,6 @@ paths_exclude_pattern = [
   "pyproject.toml",
   "README.md",
   "uv.lock",
+  "build-addon",
+  "add-package"
 ]

@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# This script downloads a package for a specific platform and Python version for the blender addon.
+# Usage: ./script/add-package.sh <platform> <package>
+# Example: ./script/add-package.sh mac numpy
+
+# This script requires Python 3.11(due to blender 4.3 having 3.11 as its integrated python environment version)
+# to be installed and available in the PATH. It also requires pip to be installed and available in the PATH.
+
+if [ "$#" -ne 2 ]; then
+   echo "Usage: $0 <platform (mac, win, linux)> <python package to install into blender>"
+   exit 1
+fi
+
+
+if [ "$1" == "mac" ]; then
+   python3.11 -m pip download $2 --dest ./wheels --only-binary=:all: --python-version=3.11 --platform=macosx_11_0_arm64
+elif [ "$1" == "win" ]; then
+   python3.11 -m pip download $2 --dest ./wheels --only-binary=:all: --python-version=3.11 --platform=win_amd64
+elif [ "$1" == "linux" ]; then
+   python3.11 -m pip download $2 --dest ./wheels --only-binary=:all: --python-version=3.11 --platform=manylinux_2_28_x86_64
+fi
+
+echo "done!"
