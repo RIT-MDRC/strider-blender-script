@@ -1,10 +1,13 @@
 import asyncio
 import json
+import os
 import threading
+from concurrent.futures import Future
 from dataclasses import dataclass
 
 import bpy
 import websockets
+from dotenv import load_dotenv
 
 from .angle_grabber import (
     MODELS_TO_GRAB_ANGLES,
@@ -13,16 +16,19 @@ from .angle_grabber import (
 )
 from .config import MODEL_CONFIGURATION
 
+load_dotenv()
+
 
 @dataclass
 class WebsocketConnection:
     server_url: str
-    connection: websockets.connect
-    task: asyncio.Task = None
+    connection: websockets.ClientConnection
+    task: Future | None = None
 
 
-WEBSOCKET_SERVER = "ws://localhost:8080"
-WEBSOCKET: dict[str, WebsocketConnection] = (
+ROBOT_URL = os.getenv("BOT_URL", "robot.local")
+WEBSOCKET_SERVER = f"ws://{ROBOT_URL}:8080"
+WEBSOCKET: dict[str, WebsocketConnection | None] = (
     dict()
 )  # Global dictionary to store WebSocket connection and interval task
 
@@ -38,10 +44,10 @@ class SendMessage(bpy.types.Operator):
     bl_label = "Send angle data"  # Display name in the interface.
     bl_options = {"REGISTER"}
 
-    message_interval: int = 0.01  # Interval in seconds to send messages.
+    message_interval: float = 0.01  # Interval in seconds to send messages.
     server_url: str = WEBSOCKET_SERVER
-    loop: asyncio.AbstractEventLoop = None
-    thread: threading.Thread = None
+    loop: asyncio.AbstractEventLoop | None = None
+    thread: threading.Thread | None = None
 
     MODELS_TO_GRAB_ANGLES: dict[str, Bone] = MODELS_TO_GRAB_ANGLES
     invalid: bool = False
@@ -64,6 +70,8 @@ class SendMessage(bpy.types.Operator):
 
     def _run_loop(self):
         asyncio.set_event_loop(self.loop)
+        if self.loop is None:
+            raise RuntimeError("Event loop is not set.")
         self.loop.run_forever()
 
     async def _connect(self):
@@ -79,29 +87,31 @@ class SendMessage(bpy.types.Operator):
             print(f"Failed to connect: {e}")
 
     async def _send_message(self):
-        assert WEBSOCKET.get(self.server_url) is not None
+        ws = WEBSOCKET.get(self.server_url)
+        if ws is None or ws.connection is None:
+            print("WebSocket connection not established.")
+            return
         try:
             angles = {k: v.get_angle() for k, v in self.MODELS_TO_GRAB_ANGLES.items()}
             data = json.dumps(angles)
-            await WEBSOCKET.get(self.server_url).connection.send(data)
+            await ws.connection.send(data)
             print("Data sent: ", data)
         except Exception as e:
             print(f"Failed to send message: {e}")
 
     async def _close_connection(self):
-        if WEBSOCKET.get(self.server_url) is not None:
-            ws = WEBSOCKET.get(self.server_url)
+        if WEBSOCKET is not None and (ws := WEBSOCKET.get(self.server_url)) is not None:
             if (task := ws.task) is not None:
                 task.cancel()
                 ws.task = None
             try:
-                await WEBSOCKET.get(self.server_url).connection.close()
+                await ws.connection.close()
                 print("WebSocket connection closed.")
             except Exception as e:
                 print(f"Failed to close connection: {e}")
             finally:
                 WEBSOCKET[self.server_url] = None
-            self.loop.stop()
+            self.loop.stop() if self.loop is not None else None
 
     async def _send_message_interval(self, interval):
         while True:
@@ -110,16 +120,19 @@ class SendMessage(bpy.types.Operator):
 
     def execute(self, context):
         # Ensure connection is established
-        if WEBSOCKET.get(self.server_url) is None:
+        if WEBSOCKET.get(self.server_url) is None and self.loop is not None:
             connect_future = asyncio.run_coroutine_threadsafe(
                 self._connect(), self.loop
             )
             connect_future.result()  # Wait for connection to complete
 
         ws = WEBSOCKET.get(self.server_url)
-        assert ws is not None
+        if ws is None:
+            print("WebSocket connection not established.")
+            return {"CANCELLED"}
+        # assert ws is not None
         # Check if an interval task is already running
-        if (task := ws.task) is None:
+        if (task := ws.task) is None and self.loop is not None:
             # Start the interval task
             ws.task = asyncio.run_coroutine_threadsafe(
                 self._send_message_interval(self.message_interval), self.loop
@@ -127,19 +140,22 @@ class SendMessage(bpy.types.Operator):
             print(f"Started sending messages every {self.message_interval} seconds.")
         else:
             # Cancel the interval task
-            task.cancel()
+            task.cancel() if task is not None else None
             ws.task = None
             print("Stopped sending messages.")
-
         return {"FINISHED"}
 
     def close(self):
+        if self.loop is None:
+            print("Event loop is not set.")
+            self.thread.join() if self.thread is not None else None
+            return
         # Close the WebSocket connection
         asyncio.run_coroutine_threadsafe(self._close_connection(), self.loop)
         # Stop the event loop
         self.loop.call_soon_threadsafe(self.loop.stop)
         # Wait for the thread to finish
-        self.thread.join()
+        self.thread.join() if self.thread is not None else None
 
 
 def menu_func(self, context):

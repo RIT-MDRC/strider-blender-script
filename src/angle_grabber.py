@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from functools import reduce
 
 import bpy
+import mathutils
 
 MODELS_TO_GRAB_ANGLES: dict[str, "Bone"] = dict()
 
@@ -11,22 +12,27 @@ MODELS_TO_GRAB_ANGLES: dict[str, "Bone"] = dict()
 class Bone:
     name: str
     angle: bool = False
-    parent_armature: "Armature" = None
-    parent: "Bone" = None
+    parent_armature: "Armature | None" = None
+    parent: "Bone | None" = None
     children: list["Bone"] = field(default_factory=list)
-    bpy_bone: bpy.types.PoseBone = None
+    bpy_bone: bpy.types.PoseBone | None = None
     invalid: bool = field(default=False)
 
     def __post_init__(self):
         assert not (self.parent is None and self.parent_armature is None), (
             f"Bone: {self.get_full_name()} must have either parent or parent_armature."
         )
-        if self.parent_armature is None:
+        if self.parent_armature is None and self.parent is not None:
             self.parent_armature = self.parent.parent_armature
         assert self.parent_armature is not None, (
             f"Bone: {self.get_full_name()} has no parent_armature."
         )
-
+        assert self.parent_armature.armature is not None, (
+            f"Armature: {self.parent_armature.name} is not valid."
+        )
+        assert self.parent_armature.armature.pose is not None, (
+            f"Armature: {self.parent_armature.name} has no pose."
+        )
         for n in self.parent_armature.armature.pose.bones:
             if n.name == self.name:
                 print(
@@ -61,10 +67,18 @@ class Bone:
             return self.name
         return f"{self.parent.get_full_name()}.{self.name}"
 
-    def get_angle(self) -> float:
+    def get_angle(self) -> float | mathutils.Matrix | None:
         """Returns the angle of the bone in degrees."""
         if not self.parent:
-            return self.bpy_bone.matrix
+            return self.bpy_bone.matrix if self.bpy_bone else None
+        if (
+            self.bpy_bone is None
+            or self.bpy_bone.matrix is None
+            or self.parent.bpy_bone is None
+            or self.parent.bpy_bone.matrix is None
+        ):
+            print(f"Bone: {self.get_full_name()} has no matrix.")
+            return None
         thisQ = self.bpy_bone.matrix.to_quaternion()
         parentQ = self.parent.bpy_bone.matrix.to_quaternion()
         relative_rot = thisQ.rotation_difference(parentQ)
@@ -74,7 +88,7 @@ class Bone:
 @dataclass
 class Armature:
     name: str
-    armature: bpy.types.Object = field(default=None)
+    armature: bpy.types.Object | None = field(default=None)
     invalid: bool = field(default=False)
     bones: list[Bone] = field(default_factory=list)
 
@@ -115,6 +129,6 @@ def set_model_namespace(config: dict) -> bool:
     )
 
 
-def get_model_angles() -> dict[str, float]:
+def get_model_angles() -> dict[str, float | mathutils.Matrix | None]:
     """Returns the angles of the bones in the armature."""
     return {k: v.get_angle() for k, v in MODELS_TO_GRAB_ANGLES.items()}

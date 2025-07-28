@@ -38,6 +38,7 @@ wheels = [
   "./wheels/websockets-14.2-cp311-cp311-macosx_11_0_arm64.whl",
   "./wheels/websockets-14.2-py3-none-any.whl",
   "./wheels/websockets-14.2-cp311-cp311-win_amd64.whl",
+  "./wheels/python_dotenv-1.1.1-py3-none-any.whl",
 ]
 
 # # Optional: add-ons can list which resources they will require:
