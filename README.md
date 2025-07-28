@@ -7,6 +7,19 @@ While this project can be run independently from blender, we only use the venv f
 It is also important to note that blender manages its own python environment and the blender python api is only available in python version 3.11, so just remember that every library have to be available for 3.11 before installation. This is also why this project is using the python environment 3.11.
 This project also is in the form of blender addon the reason being that it is much easier to install packages this way. The blender doc also has a nice direction for how to do [this](https://docs.blender.org/manual/en/dev/advanced/extensions/python_wheels.html).
 
+# Directory Structure
+1. src
+  This is the main directory where the python code for the extension lives. 
+2. wheels
+  This si the directory for storing the "compiled" extension and libraries.
+3. model
+  This is the directory for storing blender files and models. You can select to open these files when running the blender application.
+4. script
+  This is any bash sript that is used to simplify the development experience. e.g. add-package script
+5. build
+  
+
+
 
 # Installation
 For scripting in vscode we use a different python package manager from pip called UV. To install uv see [here](https://docs.astral.sh/uv/getting-started/installation/).
