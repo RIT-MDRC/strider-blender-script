@@ -44,7 +44,7 @@ class SendMessage(bpy.types.Operator):
     bl_label = "Send angle data"  # Display name in the interface.
     bl_options = {"REGISTER"}
 
-    message_interval: float = 0.01  # Interval in seconds to send messages.
+    message_interval: float = 0.1  # Interval in seconds to send messages.
     server_url: str = WEBSOCKET_SERVER
     loop: asyncio.AbstractEventLoop | None = None
     thread: threading.Thread | None = None
